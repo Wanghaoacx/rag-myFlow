@@ -22,7 +22,12 @@ export default function App() {
       <h1>rag-myFlow</h1>
       <nav aria-label="主导航">
         {tabs.map((tab) => (
-          <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}>
+          <button
+            key={tab.key}
+            type="button"
+            aria-pressed={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+          >
             {tab.label}
           </button>
         ))}
