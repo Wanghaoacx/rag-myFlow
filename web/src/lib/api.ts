@@ -75,11 +75,14 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 async function request<T>(input: string, init?: RequestInit): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
   const response = await fetch(input, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers: isFormData
+      ? init?.headers
+      : {
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
     ...init,
   });
 
@@ -104,6 +107,20 @@ export async function createDocument(payload: DocumentRequest): Promise<Document
   return request<DocumentResponse>("/api/documents", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadDocument(
+  file: File,
+  hasTextLayer: boolean,
+): Promise<DocumentResponse> {
+  const payload = new FormData();
+  payload.append("file", file);
+  payload.append("has_text_layer", String(hasTextLayer));
+
+  return request<DocumentResponse>("/api/documents/upload", {
+    method: "POST",
+    body: payload,
   });
 }
 

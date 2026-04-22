@@ -40,6 +40,33 @@ def test_document_endpoint_uses_injected_ingest_service() -> None:
     }
 
 
+def test_document_upload_endpoint_accepts_pdf_file() -> None:
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/documents/upload",
+        data={"has_text_layer": "true"},
+        files={"file": ("guide.pdf", b"%PDF-1.4", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["file_name"] == "guide.pdf"
+    assert response.json()["mime_type"] == "application/pdf"
+
+
+def test_document_upload_endpoint_rejects_ocr_only_png() -> None:
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/documents/upload",
+        data={"has_text_layer": "false"},
+        files={"file": ("scan.png", b"fake-png", "image/png")},
+    )
+
+    assert response.status_code == 415
+    assert response.json()["code"] == "ocr_removed"
+
+
 def test_http_exception_detail_uses_unified_shape() -> None:
     from fastapi import HTTPException
     from starlette.exceptions import HTTPException as StarletteHTTPException

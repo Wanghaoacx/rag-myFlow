@@ -53,6 +53,19 @@ beforeEach(() => {
       );
     }
 
+    if (url === "/api/documents/upload") {
+      return new Response(
+        JSON.stringify({
+          code: "ocr_removed",
+          message: "该文件类型依赖 OCR，rag-myFlow 当前版本不支持。",
+        }),
+        {
+          status: 415,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
     if (url === "/api/workflows/run") {
       return new Response(
         JSON.stringify({
@@ -114,7 +127,13 @@ test("submits chat form and renders answer", async () => {
 test("shows OCR rejection in knowledge page", async () => {
   render(<App />);
 
-  fireEvent.click(screen.getByRole("button", { name: "模拟导入" }));
+  const fileInput = screen.getByLabelText("选择文件");
+  fireEvent.change(fileInput, {
+    target: {
+      files: [new File(["fake-png"], "scan.png", { type: "image/png" })],
+    },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "上传文件" }));
 
   await waitFor(() => {
     expect(screen.getByRole("alert")).toHaveTextContent("该文件类型依赖 OCR");
