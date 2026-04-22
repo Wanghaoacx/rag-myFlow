@@ -1,252 +1,252 @@
-# rag-myFlow Design
+# rag-myFlow 设计文档
 
-Date: 2026-04-22
-Status: Written for user review
+日期：2026-04-22
+状态：待用户审阅
 
-## 1. Goal
+## 1. 目标
 
-Build `rag-myFlow` as a single-user local knowledge system inspired by RAGFlow, but not as a direct forked UI-preserving trim. The project should extract and reorganize the core RAG capabilities into a smaller codebase that is easier to run and evolve in source-development mode.
+`rag-myFlow` 是一个受 RAGFlow 启发、面向单用户本地使用的知识系统，但不是在上游项目基础上做简单 fork 或保留原 UI 的瘦身版本。项目目标是提取并重组 RAGFlow 的核心 RAG 能力，形成一个更小、更容易以源码方式运行和持续演化的代码库。
 
-The first version should:
+第一版需要满足以下目标：
 
-- Keep the main product capabilities: knowledge base management, document import and parsing, chunking and indexing, retrieval and chat, workflow or agent execution, model configuration, and system settings.
-- Remove all user, registration, login, authentication, tenant, organization, membership, and permission features.
-- Remove all OCR-related models, OCR task chains, OCR configuration, and OCR UI entry points.
-- Prefer explicit unsupported behavior over silent degradation when an OCR-dependent input is encountered.
-- Use a lightweight new frontend focused on the user's high-frequency paths rather than preserving the upstream UI.
+- 保留主要产品能力：知识库管理、文档导入与解析、分块与索引、检索与对话、工作流或 Agent 执行、模型配置、系统设置。
+- 删除所有用户、注册、登录、认证、租户、组织、成员和权限相关能力。
+- 删除所有 OCR 相关模型、OCR 任务链路、OCR 配置项和 OCR UI 入口。
+- 对依赖 OCR 的输入采用显式“不支持”策略，而不是静默降级。
+- 使用新的轻量前端，只覆盖你的高频操作路径，不保留上游现有 UI。
 
-## 2. Product Scope
+## 2. 产品范围
 
-### In Scope
+### 包含范围
 
-- Single local workspace only
-- Source-code-first development workflow
-- New lightweight web UI covering:
-  - knowledge base and document management
-  - retrieval chat
-  - workflow or agent operations
-  - model and system settings
-- Reuse of mature RAGFlow parsing, retrieval, and orchestration capabilities where they fit the new architecture
-- New single-user API layer with simplified contracts
+- 单一本地工作区
+- 以源码开发为主的运行方式
+- 新的轻量 Web UI，覆盖以下页面：
+  - 知识库与文档管理
+  - 检索对话
+  - 工作流或 Agent 操作
+  - 模型与系统设置
+- 在适合新架构的前提下，复用 RAGFlow 成熟的解析、检索和编排能力
+- 新的单用户 API 层，提供简化后的接口契约
 
-### Out of Scope
+### 不包含范围
 
-- Preserving the current RAGFlow UI
-- Full compatibility with upstream API contracts
-- Multi-user, multi-tenant, RBAC, or team management
-- Login shells or placeholder authentication modules
-- OCR support of any kind
-- Full preservation of upstream deployment matrix
+- 保留当前 RAGFlow UI
+- 完整兼容上游 API 契约
+- 多用户、多租户、RBAC 或团队管理
+- 登录壳子或认证占位模块
+- 任何形式的 OCR 支持
+- 完整保留上游部署矩阵
 
-## 3. Architecture
+## 3. 架构设计
 
-`rag-myFlow` should be organized as a capability-extraction project with five top-level modules.
+`rag-myFlow` 采用“能力提取后重组”的方式，整体分为 5 个顶层模块。
 
 ### 3.1 `core-ingest`
 
-Responsibilities:
+职责：
 
-- document import
-- format parsing
-- chunk generation
-- embedding calls
-- index construction
+- 文档导入
+- 格式解析
+- 分块生成
+- 向量化调用
+- 索引构建
 
-Notes:
+说明：
 
-- Reuse upstream ingestion and parsing logic selectively.
-- Keep only non-OCR parsing paths, such as plain text, Office documents, PDF text layer, and web content.
-- Reject scanned PDFs, image-only files, and other OCR-dependent inputs at the ingestion boundary.
+- 选择性复用上游导入与解析逻辑。
+- 仅保留非 OCR 解析路径，例如纯文本、Office 文档、PDF 文本层、网页内容等。
+- 对扫描版 PDF、纯图片文件以及其他依赖 OCR 的输入，在导入边界直接拒绝。
 
 ### 3.2 `core-rag`
 
-Responsibilities:
+职责：
 
-- retrieval
-- reranking
-- citation assembly
-- context packaging
-- answer generation orchestration
+- 检索
+- 重排
+- 引用片段组装
+- 上下文打包
+- 答案生成编排
 
-Notes:
+说明：
 
-- This module becomes the shared retrieval service for chat and workflow execution.
-- No user, tenant, or permission filtering should remain in retrieval calls.
+- 该模块作为对话和工作流共享的统一检索服务层。
+- 检索调用链中不再保留用户、租户或权限过滤逻辑。
 
 ### 3.3 `core-agent`
 
-Responsibilities:
+职责：
 
-- workflow definitions
-- agent execution
-- run-state persistence
-- integration with retrieval and model services
+- 工作流定义
+- Agent 执行
+- 运行状态持久化
+- 与检索和模型服务集成
 
-Notes:
+说明：
 
-- Keep the main workflow or agent value path.
-- Do not require the full upstream advanced agent feature surface in v1.
-- Reuse `core-rag` instead of introducing a separate workflow-only retrieval path.
+- 第一版保留核心工作流或 Agent 价值路径。
+- 不要求一次性完整迁移上游所有高级 Agent 能力。
+- 工作流中的检索能力统一复用 `core-rag`，不再维护独立的工作流检索分支。
 
 ### 3.4 `app-api`
 
-Responsibilities:
+职责：
 
-- expose the new single-user API
-- translate UI actions into internal service calls
-- inject fixed local context when reused upstream code still expects identity-like fields
+- 对外提供新的单用户 API
+- 将前端动作翻译为内部服务调用
+- 当复用的上游代码仍要求身份类字段时，注入固定本地上下文
 
-Notes:
+说明：
 
-- External API contracts should be rewritten for single-user operation.
-- Clients should not send login tokens, user IDs, tenant IDs, or permission context.
+- 对外接口契约按单用户模式重新定义。
+- 客户端不再传递登录 token、用户 ID、租户 ID 或权限上下文。
 
 ### 3.5 `app-web`
 
-Responsibilities:
+职责：
 
-- provide the new lightweight frontend
-- expose only the high-frequency user paths
+- 提供新的轻量前端
+- 只暴露高频操作路径
 
-Notes:
+说明：
 
-- The frontend is task-oriented, not upstream-compatible.
-- It should optimize for short paths and local solo usage.
+- 前端以任务路径为中心，不追求上游兼容。
+- 界面设计优先服务单人本地使用的短链路操作。
 
-## 4. Data Model
+## 4. 数据模型
 
-The data model should be reduced from multi-user resources to single-workspace resources.
+数据模型从“多用户资源”收敛为“单工作区资源”。
 
-### Core entities
+### 核心实体
 
-- `workspace`: the only local workspace, replacing user and tenant context
-- `knowledge_base`: knowledge base definition and retrieval defaults
-- `document`: imported source file or remote content record
-- `chunk`: parsed and indexed document segments with source traceability
-- `conversation`: chat session container
-- `message`: message history in a conversation
-- `workflow`: workflow or agent definition
-- `agent_run`: workflow execution record
-- `model_profile`: LLM, embedding, reranker, and related model configuration
-- `system_setting`: local runtime and indexing settings
+- `workspace`：本地唯一工作区，用来替代原先的用户和租户上下文
+- `knowledge_base`：知识库定义及默认检索配置
+- `document`：导入的源文件或远程内容记录
+- `chunk`：解析和索引后的文档片段，并保留来源追踪能力
+- `conversation`：对话会话容器
+- `message`：对话消息历史
+- `workflow`：工作流或 Agent 定义
+- `agent_run`：工作流执行记录
+- `model_profile`：LLM、embedding、reranker 等模型配置
+- `system_setting`：本地运行和索引相关系统配置
 
-### Data-model rules
+### 数据模型规则
 
-- All resources belong to the single default `workspace`.
-- No owner, tenant, member, or permission tables should remain as active domain concepts.
-- If reused upstream code still references those fields internally, that dependency should be eliminated during implementation rather than exposed as part of the new design.
+- 所有资源都归属于唯一默认 `workspace`。
+- `owner`、`tenant`、`member`、`permission` 等表或领域概念不再作为新系统的有效模型存在。
+- 如果复用的上游代码内部仍引用这些字段，实施阶段应消除该依赖，而不是把它继续暴露为新系统设计的一部分。
 
-## 5. Key Data Flows
+## 5. 关键数据流
 
-### 5.1 Document ingestion
+### 5.1 文档导入流
 
-`upload or import -> parse -> chunk -> embed -> index -> ready`
+`上传或导入 -> 解析 -> 分块 -> 向量化 -> 建索引 -> 就绪`
 
-Behavior rules:
+行为规则：
 
-- OCR-dependent documents fail fast with a clear unsupported error.
-- Unsupported inputs must not silently skip parsing or produce incomplete indexing results.
+- 依赖 OCR 的文档必须快速失败，并返回明确的不支持错误。
+- 不允许通过静默跳过解析、生成不完整索引结果等方式做隐式降级。
 
-### 5.2 Retrieval chat
+### 5.2 检索对话流
 
-`question -> retrieve -> rerank -> assemble context -> call model -> answer with citations`
+`问题输入 -> 检索 -> 重排 -> 组装上下文 -> 调用模型 -> 返回带引用的答案`
 
-Behavior rules:
+行为规则：
 
-- Retrieval scope is controlled by selected knowledge bases and chat configuration only.
-- No tenant or permission filtering remains in this flow.
+- 检索范围仅由选定知识库和当前对话配置控制。
+- 该链路中不再存在租户或权限过滤。
 
-### 5.3 Workflow or agent execution
+### 5.3 工作流或 Agent 执行流
 
-`workflow step -> call rag service, tools, or model -> persist run state -> return output`
+`工作流步骤 -> 调用 RAG 服务、工具或模型 -> 持久化运行状态 -> 返回输出`
 
-Behavior rules:
+行为规则：
 
-- Workflow retrieval reuses the same `core-rag` interfaces as chat.
-- Deleted capabilities must fail explicitly if referenced.
+- 工作流中的检索调用与对话共用 `core-rag` 接口。
+- 已删除能力如果仍被引用，必须显式失败。
 
-### 5.4 Settings updates
+### 5.4 设置变更流
 
-`UI or API update -> validate -> persist config -> hot reload or apply on next run`
+`UI 或 API 更新 -> 校验 -> 持久化配置 -> 热加载或下次运行生效`
 
-Behavior rules:
+行为规则：
 
-- Model and system settings are managed through one coherent configuration surface.
-- There is no split between user-level and system-level settings.
+- 模型配置和系统设置通过统一配置入口管理。
+- 不再区分用户级配置和系统级配置。
 
-## 6. API Design Principles
+## 6. API 设计原则
 
-- Build a new single-user API rather than inheriting upstream auth-oriented contracts.
-- Keep public APIs simple and local-first.
-- Hide any temporary internal compatibility shims inside `app-api`.
-- Do not expose user, session, organization, tenant, or permission concepts externally.
+- 重新设计单用户 API，而不是继承上游以认证为中心的接口契约。
+- 对外接口保持简单、面向本地使用。
+- 如果短期内必须保留兼容性垫片，这些实现只能隐藏在 `app-api` 内部。
+- 对外不暴露用户、会话、组织、租户、权限等概念。
 
-## 7. Error Handling
+## 7. 错误处理
 
-The project should prefer explicit failure over hidden fallback.
+系统应坚持“显式失败优于隐式兜底”。
 
-### Required behaviors
+### 必须满足的行为
 
-- OCR-dependent document input returns a clear "unsupported because OCR has been removed" error.
-- Residual permission or tenant dependencies discovered during implementation are treated as architecture issues to remove, not permanent runtime branches to preserve.
-- Workflow nodes that depend on removed features return clear unsupported errors in both API and UI.
+- 对依赖 OCR 的文档输入，返回明确错误：该能力不受支持，因为 OCR 链路已移除。
+- 如果在实施中发现残留的权限或租户依赖，应视为架构问题并清理，而不是长期保留为运行时分支。
+- 如果工作流节点依赖已删除能力，API 和 UI 都必须给出明确的不支持提示。
 
-## 8. Testing Strategy
+## 8. 测试策略
 
-### Unit tests
+### 单元测试
 
-- single-user context substitution behavior
-- non-OCR ingestion validation
-- retrieval and citation core logic
+- 单用户上下文替换逻辑
+- 非 OCR 文档导入校验
+- 检索与引用组装核心逻辑
 
-### Integration tests
+### 集成测试
 
-- document import to indexed retrieval chat
-- workflow or agent execution using retrieval
-- settings update affecting later runs
+- 从文档导入到检索对话的主链路
+- 基于检索能力的工作流或 Agent 执行主链路
+- 设置更新对后续运行的影响
 
-### Regression tests
+### 回归测试
 
-- system boot without login, user, or tenant modules
-- successful completion of main high-frequency flows
-- stable explicit failure for scanned PDFs, images, or OCR-only inputs
+- 删除登录、用户、租户模块后系统仍可启动
+- 高频主流程可以完整执行
+- 对扫描件、图片或 OCR-only 输入稳定返回显式失败
 
-## 9. Delivery Boundaries for V1
+## 9. 第一版交付边界
 
-V1 should include:
+第一版应包含：
 
-- extracted backend core modules
-- new single-user API layer
-- lightweight frontend
-- source-development startup scripts
-- minimal project documentation
+- 提取后的后端核心模块
+- 新的单用户 API 层
+- 轻量前端
+- 源码开发启动脚本
+- 最小必要文档
 
-V1 should not include:
+第一版不包含：
 
-- upstream UI preservation
-- auth compatibility shells
-- OCR placeholders
-- full upstream deployment compatibility
+- 保留上游 UI
+- 认证兼容壳层
+- OCR 占位能力
+- 对上游完整部署方式的兼容
 
-## 10. Confirmed Decisions
+## 10. 已确认决策
 
-These decisions were confirmed during brainstorming:
+以下决策已在本轮设计过程中确认：
 
-- Single-user only
-- No login
-- Architecture-level removal of auth and OCR, not only feature-level hiding
-- Source development is the primary operating mode
-- Existing upstream UI does not need to be preserved
-- A lightweight frontend covering the high-frequency paths is acceptable
+- 系统仅供单用户使用
+- 不保留登录
+- 删除用户与 OCR 采用架构级清理，而不是仅做功能隐藏
+- 运行方式以源码开发为主
+- 不需要保留上游现有 UI
+- 可以接受只覆盖高频操作路径的轻量前端
 
-## 11. Implementation Direction
+## 11. 实施方向
 
-The implementation plan should assume a phased extraction approach:
+实施计划应采用分阶段提取方式：
 
-1. identify reusable upstream capability slices
-2. define the new single-user API and domain model
-3. extract and adapt ingestion, retrieval, and workflow cores
-4. build the lightweight frontend on the new API
-5. add verification coverage for the supported and unsupported paths
+1. 识别可复用的上游能力切片
+2. 定义新的单用户 API 和领域模型
+3. 提取并改造导入、检索、工作流核心能力
+4. 基于新 API 构建轻量前端
+5. 为支持路径和不支持路径补齐验证覆盖
 
-This design is intentionally strict about removing multi-user and OCR concepts at the architectural level so that `rag-myFlow` remains maintainable as a personal source-driven system instead of a partially disabled enterprise product.
+这份设计刻意要求在架构层面清除多用户和 OCR 概念，目标是让 `rag-myFlow` 成为一个可长期维护的个人源码项目，而不是一个被部分阉割的企业版系统。
