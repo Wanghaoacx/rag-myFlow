@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+src/rag_myflow.egg-info/
+# Temporary until lockfile policy is decided.
+uv.lock
+node_modules/
+dist/
+coverage/
