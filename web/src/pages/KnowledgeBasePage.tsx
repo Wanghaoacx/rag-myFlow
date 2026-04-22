@@ -34,7 +34,7 @@ export function KnowledgeBasePage() {
   return (
     <section>
       <h2>知识库与文档管理</h2>
-      <p>当前页已接入真实文件上传入口，用来验证无 OCR 约束和最小导入链路。</p>
+      <p>当前页已接入真实文件上传入口；文本类文件会进入最小解析链路，OCR 依赖型文件会被显式拒绝。</p>
 
       <form onSubmit={handleSubmit}>
         <label>
@@ -69,6 +69,8 @@ export function KnowledgeBasePage() {
           <p>文档 ID：{result.document_id}</p>
           <p>文件名：{result.file_name}</p>
           <p>MIME：{result.mime_type}</p>
+          <p>Chunk 数：{result.chunk_count}</p>
+          <p>文本预览：{result.preview_text ?? "当前文件尚未提取到可检索文本"}</p>
         </div>
       ) : null}
 

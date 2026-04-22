@@ -11,7 +11,7 @@ vi.stubGlobal("fetch", fetchMock);
 
 beforeEach(() => {
   fetchMock.mockReset();
-  fetchMock.mockImplementation(async (input) => {
+  fetchMock.mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input.toString();
 
     if (url === "/api/health") {
@@ -54,6 +54,25 @@ beforeEach(() => {
     }
 
     if (url === "/api/documents/upload") {
+      const file = init?.body instanceof FormData ? init.body.get("file") : null;
+      const fileName = file instanceof File ? file.name : "";
+
+      if (fileName === "notes.txt") {
+        return new Response(
+          JSON.stringify({
+            document_id: "doc-uploaded",
+            file_name: "notes.txt",
+            mime_type: "text/plain",
+            chunk_count: 1,
+            preview_text: "rag-myFlow 删除了用户、登录和 OCR 模块。",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
       return new Response(
         JSON.stringify({
           code: "ocr_removed",
@@ -138,4 +157,22 @@ test("shows OCR rejection in knowledge page", async () => {
   await waitFor(() => {
     expect(screen.getByRole("alert")).toHaveTextContent("该文件类型依赖 OCR");
   });
+});
+
+test("shows extracted preview in knowledge page", async () => {
+  render(<App />);
+
+  const fileInput = screen.getByLabelText("选择文件");
+  fireEvent.change(fileInput, {
+    target: {
+      files: [new File(["rag-myFlow 删除了用户、登录和 OCR 模块。"], "notes.txt", { type: "text/plain" })],
+    },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "上传文件" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("Chunk 数：1")).toBeInTheDocument();
+  });
+
+  expect(screen.getByText(/文本预览：rag-myFlow 删除了用户、登录和 OCR 模块。/)).toBeInTheDocument();
 });

@@ -9,6 +9,7 @@ from rag_myflow.api.routes.documents import create_documents_router
 from rag_myflow.api.routes.health import create_health_router
 from rag_myflow.api.routes.workflows import create_workflows_router
 from rag_myflow.config import AppConfig
+from rag_myflow.domain.store import InMemoryDocumentStore
 from rag_myflow.ingest.service import IngestService
 from rag_myflow.rag.service import RagService
 
@@ -26,8 +27,12 @@ def create_app(
     workflow_service: WorkflowService | None = None,
 ) -> FastAPI:
     app_config = config or AppConfig()
-    document_service = ingest_service or IngestService()
-    answer_service = rag_service or RagService()
+    store = getattr(ingest_service, "store", None) or getattr(rag_service, "store", None) or InMemoryDocumentStore()
+    document_service = ingest_service or IngestService(
+        store=store,
+        default_knowledge_base_id=app_config.default_knowledge_base_id,
+    )
+    answer_service = rag_service or RagService(store=store)
     flow_service = workflow_service or WorkflowService(answer_service)
 
     app = FastAPI(title="rag-myFlow API")

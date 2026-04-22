@@ -19,7 +19,8 @@ def test_workflow_service_runs_rag_query_step() -> None:
     result = service.run(request)
 
     assert result.status == "completed"
-    assert result.outputs[0]["answer"].startswith("基于知识库")
+    assert result.outputs[0]["answer"] == "当前知识库还没有匹配的文本内容。"
+    assert result.outputs[0]["citations"] == []
 
 
 def test_workflow_service_rejects_deleted_ocr_step() -> None:

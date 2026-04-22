@@ -45,8 +45,8 @@ def test_validate_document_rejects_image_only_png() -> None:
 
 def test_validate_document_rejects_other_unsupported_type() -> None:
     request = IngestRequest(
-        file_name="report.txt",
-        mime_type="text/plain",
+        file_name="report.docx",
+        mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         has_text_layer=True,
     )
 
@@ -54,6 +54,18 @@ def test_validate_document_rejects_other_unsupported_type() -> None:
         validate_document(request)
 
     assert exc.value.code == "unsupported_type"
+
+
+def test_validate_document_accepts_plain_text() -> None:
+    request = IngestRequest(
+        file_name="notes.txt",
+        mime_type="text/plain",
+        has_text_layer=True,
+    )
+
+    result = validate_document(request)
+
+    assert result.normalized_mime_type == "text/plain"
 
 
 def test_validate_document_requires_text_layer_flag() -> None:

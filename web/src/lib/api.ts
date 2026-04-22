@@ -21,6 +21,8 @@ export type DocumentResponse = {
   document_id: string;
   file_name: string;
   mime_type: string;
+  chunk_count: number;
+  preview_text: string | null;
 };
 
 export type Citation = {
