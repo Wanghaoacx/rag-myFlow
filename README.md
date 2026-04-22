@@ -21,6 +21,6 @@ bash scripts/dev_backend.sh
 
 ```bash
 cd web
-npm install
+npm ci
 bash ../scripts/dev_web.sh
 ```
